@@ -3,7 +3,6 @@
 ## [L-01] `VoteWeighting::voteForNomineeWeightsBatch` & `VoteWeighting::getNextAllowedVotingTimes` susecptible to DOS attacks
 Both these functions takes the `accounts` as a param and loops over it until `accounts.length` A malicious user could pass in very large arrays to exhaust the gas limit, potentially causing a denial-of-service (DoS) attack. If the transaction fails due to exceeding the gas limit, block space is wasted on a failed transaction, reducing the number of successful transactions that can be included in that block. Multiple attempts by the attacker can also congest the network, delaying other transactions.
 
-
 https://github.com/code-423n4/2024-05-olas/blob/main/governance/contracts/VoteWeighting.sol#L563-L576
 ```solidity
  function voteForNomineeWeightsBatch(
@@ -16,7 +15,7 @@ https://github.com/code-423n4/2024-05-olas/blob/main/governance/contracts/VoteWe
         }
 
         // Traverse all accounts and weights
-        for (uint256 i = 0; i < accounts.length; ++i) {
+@>      for (uint256 i = 0; i < accounts.length; ++i) {
             voteForNomineeWeights(accounts[i], chainIds[i], weights[i]);
         }
     }
@@ -38,7 +37,7 @@ function getNextAllowedVotingTimes(
         nextAllowedVotingTimes = new uint256[](accounts.length);
 
         // Traverse nominees and get next available voting times
-        for (uint256 i = 0; i < accounts.length; ++i) {
+@>       for (uint256 i = 0; i < accounts.length; ++i) {
             // Get the nominee struct and hash
             Nominee memory nominee = Nominee(accounts[i], chainIds[i]);
             bytes32 nomineeHash = keccak256(abi.encode(nominee));
@@ -73,7 +72,7 @@ https://github.com/code-423n4/2024-05-olas/blob/main/governance/contracts/VoteWe
             revert ZeroAddress();
         }
 
-        owner = newOwner;
+@>      owner = newOwner;
         emit OwnerUpdated(newOwner);
     }
 ```
@@ -109,7 +108,7 @@ https://github.com/code-423n4/2024-05-olas/blob/main/governance/contracts/OLAS.s
         uint256 numYears = (block.timestamp - timeLaunch) / oneYear;
         // Calculate maximum mint amount to date
         uint256 supplyCap = tenYearSupplyCap;
-        // After 10 years, adjust supplyCap according to the yearly inflation % set in maxMintCapFraction
+@>      // After 10 years, adjust supplyCap according to the yearly inflation % set in maxMintCapFraction
         if (numYears > 9) {
             // Number of years after ten years have passed (including ongoing ones)
             numYears -= 9;
@@ -140,7 +139,7 @@ function _finalizeIncentivesForUnitId(uint256 epochNum, uint256 unitType, uint25
             totalIncentives *= mapEpochTokenomics[epochNum].unitPoints[unitType].rewardUnitFraction;
             // Add to the final reward for the last epoch
             totalIncentives = mapUnitIncentives[unitType][unitId].reward + totalIncentives / 100;
-            mapUnitIncentives[unitType][unitId].reward = uint96(totalIncentives);
+@>          mapUnitIncentives[unitType][unitId].reward = uint96(totalIncentives);
             // Setting pending reward to zero
             mapUnitIncentives[unitType][unitId].pendingRelativeReward = 0;
         }
@@ -156,7 +155,7 @@ function _finalizeIncentivesForUnitId(uint256 epochNum, uint256 unitType, uint25
             totalIncentives *= mapEpochTokenomics[epochNum].unitPoints[unitType].topUpUnitFraction;
             uint256 sumUnitIncentives = uint256(mapEpochTokenomics[epochNum].unitPoints[unitType].sumUnitTopUpsOLAS) * 100;
             totalIncentives = mapUnitIncentives[unitType][unitId].topUp + totalIncentives / sumUnitIncentives;
-            mapUnitIncentives[unitType][unitId].topUp = uint96(totalIncentives);
+@>          mapUnitIncentives[unitType][unitId].topUp = uint96(totalIncentives);
             // Setting pending top-up to zero
             mapUnitIncentives[unitType][unitId].pendingRelativeTopUp = 0;
         }
@@ -219,28 +218,8 @@ https://github.com/code-423n4/2024-05-olas/blob/main/registries/contracts/stakin
     }
 ```
 
-## [L-08] Use Safe Transfer Method Instead of `call` in `StakingNativeToken`
-The `_withdraw` function in `StakingNativeToken` uses `call` to transfer tokens to `to`. This approach forwards all remaining gas to the recipient contract, where the `transfer` provides a fixed gas stipend of 2300 gas units to the recipient’s receive or fallback function in order to prevent any reentrance attacks. Where `StakingToken` uses `safeTransfer` from `SafeTransferLib` for its `_withdraw`.
-
-https://github.com/code-423n4/2024-05-olas/blob/main/registries/contracts/staking/StakingNativeToken.sol#L28-L37
-```solidity
-    function _withdraw(address to, uint256 amount) internal override {
-        // Update the contract balance
-        balance -= amount;
-
-        // Transfer the amount
-        (bool success, ) = to.call{value: amount}("");
-        if (!success) {
-            revert TransferFailed(address(0), address(this), to, amount);
-        }
-    })
-```
-
-## [L-09] Missing `_donatorBlacklist` Address Check in `Tokenomics::initializeTokenomics`
-Here, the input param `_donatorBlacklist` is assigned to the state variable `donatorBlacklist` without any checks against msg.sender. According to the comment `#if_succeeds {:msg "donatorBlacklist assignment"} donatorBlacklist == _donatorBlacklist;` compared to other params' comment, which could potentially allow `_donatorBlacklist` to be zero address, but we can check that `_donatorBlacklist` is not `msg.sender`.
-
-## [L-09] Can improve consistently & readability in `Tokenomics::changeTokenomicsParameters` and `Tokenomics::_finalizeIncentivesForUnitId`
-We can improve the readability of the `changeTokenomicsParameters` function, by removing redundant casting operations for variables (`_devsPerCapital`, `_codePerDev`, `_epsilonRate`, `_epochLen`, `_veOLASThreshold`). These redundant casts do not provide additional type safety or clarity but add complexity and reduce readability, and also save a bit in gas. Similarly for `mapEpochTokenomics[epochNum].unitPoints[unitType]` in `_finalizeIncentivesForUnitId` can also be considered.
+## [L-08] Can improve consistently & readability in `Tokenomics::changeTokenomicsParameters` and `Tokenomics::_finalizeIncentivesForUnitId`
+We can improve the readability of the `changeTokenomicsParameters` function, by removing redundant casting operations for variables (`_devsPerCapital`, `_codePerDev`, `_epochLen`, `_veOLASThreshold`). These redundant casts do not provide additional type safety or clarity but add complexity and reduce readability, and also save a bit in gas. Similarly for `mapEpochTokenomics[epochNum].unitPoints[unitType]` in `_finalizeIncentivesForUnitId` can also be considered.
 
 https://github.com/code-423n4/2024-05-olas/blob/main/tokenomics/contracts/Tokenomics.sol#L639-L694
 ```solidity
@@ -257,7 +236,7 @@ function changeTokenomicsParameters(
         }
 
         // devsPerCapital is the part of the IDF calculation and thus its change will be accounted for in the next epoch
-        if (uint72(_devsPerCapital) > MIN_PARAM_VALUE) {
+@>      if (uint72(_devsPerCapital) > MIN_PARAM_VALUE) {
             devsPerCapital = uint72(_devsPerCapital);
         } else {
             // This is done in order not to pass incorrect parameters into the event
@@ -265,7 +244,7 @@ function changeTokenomicsParameters(
         }
 
         // devsPerCapital is the part of the IDF calculation and thus its change will be accounted for in the next epoch
-        if (uint72(_codePerDev) > MIN_PARAM_VALUE) {
+@>      if (uint72(_codePerDev) > MIN_PARAM_VALUE) {
             codePerDev = uint72(_codePerDev);
         } else {
             // This is done in order not to pass incorrect parameters into the event
@@ -282,14 +261,14 @@ function changeTokenomicsParameters(
         }
 
         // Check for the epochLen value to change
-        if (uint32(_epochLen) >= MIN_EPOCH_LENGTH && uint32(_epochLen) <= MAX_EPOCH_LENGTH) {
+@>      if (uint32(_epochLen) >= MIN_EPOCH_LENGTH && uint32(_epochLen) <= MAX_EPOCH_LENGTH) {
             nextEpochLen = uint32(_epochLen);
         } else {
             _epochLen = epochLen;
         }
 
         // Adjust veOLAS threshold for the next epoch
-        if (uint96(_veOLASThreshold) > 0) {
+@>      if (uint96(_veOLASThreshold) > 0) {
             nextVeOLASThreshold = uint96(_veOLASThreshold);
         } else {
             _veOLASThreshold = veOLASThreshold;
@@ -302,5 +281,45 @@ function changeTokenomicsParameters(
     }
 ```
 
+## [L-09] Use Safe Transfer Method Instead of `call` in `StakingNativeToken`
+The `_withdraw` function in `StakingNativeToken` uses `call` to transfer tokens to `to`. This approach forwards all remaining gas to the recipient contract, where the `transfer` provides a fixed gas stipend of 2300 gas units to the recipient’s receive or fallback function in order to prevent any reentrance attacks. Where `StakingToken` uses `safeTransfer` from `SafeTransferLib` for its `_withdraw`.
 
- 
+https://github.com/code-423n4/2024-05-olas/blob/main/registries/contracts/staking/StakingNativeToken.sol#L28-L37
+```solidity
+    function _withdraw(address to, uint256 amount) internal override {
+        // Update the contract balance
+        balance -= amount;
+
+        // Transfer the amount
+@>      (bool success, ) = to.call{value: amount}("");
+        if (!success) {
+            revert TransferFailed(address(0), address(this), to, amount);
+        }
+    })
+```
+
+## [L-10] Missing `_donatorBlacklist` Address Check in `Tokenomics::initializeTokenomics`
+Here, the input param `_donatorBlacklist` is assigned to the state variable `donatorBlacklist` without any checks against `msg.sender`. According to the comment `#if_succeeds {:msg "donatorBlacklist assignment"} donatorBlacklist == _donatorBlacklist;` compared to other params' comment, which could potentially allow `_donatorBlacklist` to be zero address, but we can check that `_donatorBlacklist` is not `msg.sender`.
+
+ ## [L-11] Old version of OpenZeppelin Contracts used
+Using old versions of 3rd-party libraries in the build process can introduce vulnerabilities to the protocol code.
+The latest version is 5.0.2, version used in project is 4.8.3 & ^4.2.0.
+
+### Risks
+- Older versions of OpenZeppelin contracts might not have fixes for known security vulnerabilities.
+- Older versions might contain features or functionality that have been deprecated in recent versions.
+- Newer versions often come with new features, optimizations, and improvements that are not available in older versions.
+
+ ## [L-12] Redundant Owner Check Implementation
+Throughout the codebase, there is redundant implementation of owner verification using the statement `if (msg.sender != owner) { revert OwnerOnly(msg.sender, owner); }`. This pattern is repeated across multiple functions. To enhance code readability, maintainability, and reduce duplication, consider implementing a modifier for owner-only functions. Or can also use [Ownable.sol](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol) from openzeppelin-contracts.
+
+ ## [L-13] Order of functions
+Ordering helps readers identify which functions they can call and to find the constructor and fallback definitions easier. But there are contracts in the project that do not comply with this.
+The solidity [documentation](https://docs.soliditylang.org/en/v0.8.16/style-guide.html#order-of-functions) recommends the following order for functions:
+- constructor
+- receive function (if exists)
+- fallback function (if exists)
+- external
+- public
+- internal
+- private

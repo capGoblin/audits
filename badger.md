@@ -187,23 +187,22 @@ https://github.com/code-423n4/2024-06-badger/blob/main/ebtc-protocol/packages/co
             );
         }
 ```
+## [L-09] Insecure ETH Transfer Method 
 
-## [L-09] Lack of Validation for Parameters in Constructor 
-The constructors of `ZapRouterBase`, `LeverageMacroBase`, and `LeverageZapRouterBase` do not perform any validation on their parameters. If validation is not applicable for a specific parameter, then it can be commented as N/A.
-By performing validation on constructor parameters, you can catch potential issues early and prevent unexpected attacks, such as the Clipboard Replacement Attack.
-
-## [L-10] Missing of NatSpec Docs in Some Contracts
-The contracts `LeverageZapRouterBase` and `ZapRouterBase` do not have any NatSpec documentation for any of the functions, and the `LeverageMacroBase` has incomplete NatSpec documentation for its functions. NatSpec comments are essential for improving the readability and maintainability of the codebase. They allow developers, users, and auditors to easily understand the functionality of the contract.
-
-## [L-11] Insecure ETH Transfer Method 
-
-Function `_depositRawEthIntoLido` uses a low-level call to transfer ETH, which can be insecure and error-prone. Can use `transfer` or `send`, which automatically revert on failure. 
-Or do something like this:
+Function `_depositRawEthIntoLido` uses a low-level call which can be risky, as it does not automatically revert the transaction on failure. Recommended to use `transfer` or `send`, which automatically revert on failure. Or alternatively can revert depending on the bool that is returned like this:
 
 ```solidity
     (bool success, ) = payable(address(stEth)).call{value: _initialETH}("");
     require(success, "ETH transfer failed");
 ```
+
+## [L-10] Lack of Validation for Parameters in Constructor 
+The constructors of `ZapRouterBase`, `LeverageMacroBase`, and `LeverageZapRouterBase` do not perform any validation on their parameters. If validation is not applicable for a specific parameter, then it can be commented as N/A.
+By performing validation on constructor parameters, you can catch potential issues early and prevent unexpected attacks, such as the Clipboard Replacement Attack.
+
+## [L-11] Missing of NatSpec Docs in Some Contracts
+The contracts `LeverageZapRouterBase` and `ZapRouterBase` do not have any NatSpec documentation for any of the functions, and the `LeverageMacroBase` has incomplete NatSpec documentation for its functions. NatSpec comments are essential for improving the readability and maintainability of the codebase. They allow developers, users, and auditors to easily understand the functionality of the contract.
+
 
 ## [L-12] Order of functions
 The solidity [documentation](https://docs.soliditylang.org/en/v0.8.16/style-guide.html#order-of-functions) recommends the following order for functions:

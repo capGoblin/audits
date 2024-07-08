@@ -205,5 +205,15 @@ Or do something like this:
     require(success, "ETH transfer failed");
 ```
 
+## [L-12] Order of functions
+The solidity [documentation](https://docs.soliditylang.org/en/v0.8.16/style-guide.html#order-of-functions) recommends the following order for functions:
+- constructor
+- receive function (if exists)
+- fallback function (if exists)
+- external
+- public
+- internal
+- private
 
-
+The `receive` function in `EbtcLeverageZapRouter` is between two `external` functions, and not after the constructor. Whereas in `EbtcZapRouter` the `receive` function aligned correctly to the order. 
+Ordering helps readers identify which functions they can call and to find the constructor and receive/fallback definitions more easily.
